@@ -135,6 +135,7 @@ def send_action(action: ChatAction):
 
 media_cache = {}
 
+
 # Отправка картинок из папки
 async def send_image(update: Update, context: ContextTypes.DEFAULT_TYPE, image_path: str, text: Optional[str] = None,
                      reply_markup: Optional[ReplyKeyboardMarkup] = None) -> None:
@@ -155,9 +156,9 @@ async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE, video_p
     else:
         with open(os.path.join('pics', video_path), 'rb') as file:
             update = await context.bot.send_video(chat_id=update.effective_chat.id,
-                                         caption=text,
-                                         video=file,
-                                         reply_markup=reply_markup)
+                                                  caption=text,
+                                                  video=file,
+                                                  reply_markup=reply_markup)
             media_cache[video_path] = update.video.file_id
 
 
@@ -237,6 +238,9 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                reply_markup=keyboard_from_messages(
                                                    ["Дон мафии", "Маньяк", "Мафия", "Шериф", "Мирный житель"]))
             case UserState.TEST_Q2:
+                if update.message.text != "Маньяк":
+                    await context.bot.send_message(chat_id=chat_id,
+                                                   text=load_text("test_a1.txt"))
                 await context.bot.send_message(chat_id=chat_id,
                                                text=load_stage_text(state),
                                                reply_markup=keyboard_from_messages(["Игрок № 5 - мафия",
@@ -244,6 +248,9 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                                                     "Вы мафия",
                                                                                     "Игрок № 1 - шериф"]))
             case UserState.TEST_Q3:
+                if update.message.text != "Игрок № 5 - мирный житель":
+                    await context.bot.send_message(chat_id=chat_id,
+                                                   text=load_text("test_a2.txt"))
                 await context.bot.send_message(chat_id=chat_id,
                                                text=load_stage_text(state),
                                                reply_markup=keyboard_from_messages(
@@ -251,6 +258,9 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                     "Первой ночью стреляем в игрока 1, следующей в 6, потом в 4.",
                                                     "Нужно проснуться ночью: когда назовут 1", ]))
             case UserState.TEST_END:
+                if update.message.text != "Первой ночью стреляем в игрока 1, следующей в 6, потом в 4.":
+                    await context.bot.send_message(chat_id=chat_id,
+                                                   text=load_text("test_a3.txt"))
                 await common_stage_process(chat_id, context, state, "Я уже поиграл! 😎")
             case UserState.MC_START:
                 await common_stage_process(chat_id, context, state, "Да 😁")
