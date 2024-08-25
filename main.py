@@ -213,7 +213,7 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                text=load_stage_text(state, "1"),
                                                reply_markup=None)
                 await send_video(update, context,
-                                 video_path="voting.mp4",
+                                 video_path="voting.gif",
                                  text=load_stage_text(state, "2"),
                                  reply_markup=keyboard_from_messages(["А потом что? 🤓"])
                                  )
@@ -224,7 +224,7 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                text=load_stage_text(state, "1"),
                                                reply_markup=None)
                 await send_video(update, context,
-                                 video_path="night.mp4",
+                                 video_path="night.gif",
                                  text=load_stage_text(state, "2"),
                                  reply_markup=keyboard_from_messages(["Это все? Уже можно играть?😝"])
                                  )
