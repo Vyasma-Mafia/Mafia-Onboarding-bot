@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sqlite3
 from enum import Enum
@@ -6,9 +5,9 @@ from functools import wraps
 from typing import Optional, List
 
 import aiosqlite
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.constants import ChatAction
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ApplicationBuilder, \
+from telegram.ext import Application, ContextTypes, ApplicationBuilder, \
     MessageHandler
 
 
@@ -134,28 +133,43 @@ def send_action(action: ChatAction):
     return decorator
 
 
+media_cache = {}
+
 # Отправка картинок из папки
 async def send_image(update: Update, context: ContextTypes.DEFAULT_TYPE, image_path: str, text: Optional[str] = None,
                      reply_markup: Optional[ReplyKeyboardMarkup] = None) -> None:
-    with open(os.path.join('pics', image_path), 'rb') as file:
+    if image_path in media_cache:
         await context.bot.send_photo(chat_id=update.effective_chat.id,
                                      caption=text,
-                                     photo=file,
+                                     photo=media_cache[image_path],
                                      reply_markup=reply_markup)
+    else:
+        with open(os.path.join('pics', image_path), 'rb') as file:
+            update = await context.bot.send_photo(chat_id=update.effective_chat.id,
+                                         caption=text,
+                                         photo=file,
+                                         reply_markup=reply_markup)
 
 
 async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE, video_path: str, text: Optional[str] = None,
                      reply_markup: Optional[ReplyKeyboardMarkup] = None) -> None:
-    with open(os.path.join('pics', video_path), 'rb') as file:
+    if video_path in media_cache:
         await context.bot.send_video(chat_id=update.effective_chat.id,
                                      caption=text,
-                                     video=file,
+                                     video=media_cache[video_path],
                                      reply_markup=reply_markup)
+    else:
+        with open(os.path.join('pics', video_path), 'rb') as file:
+            update = await context.bot.send_video(chat_id=update.effective_chat.id,
+                                         caption=text,
+                                         video=file,
+                                         reply_markup=reply_markup)
+            media_cache[video_path] = update.video.file_id
 
 
 # Обработчик нажатия на кнопки
 @send_action(ChatAction.TYPING)
-async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.message.from_user
     chat_id = update.message.chat.id
     state = await get_user_state(user.id)
@@ -169,19 +183,19 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         match state:
             case UserState.AFTER_START:
-                await  common_stage_process(chat_id, context, state, "Да!")
+                await common_stage_process(chat_id, context, state, "Да!")
             case UserState.CHOOSE_NAME:
                 await context.bot.send_message(chat_id=chat_id,
                                                text=load_stage_text(state),
                                                reply_markup=None)
                 await context.bot.send_message(chat_id=chat_id,
                                                text=load_stage_text(state, "2"),
-                                               reply_markup=keyboard_from_messages([""])
+                                               reply_markup=ReplyKeyboardRemove()
                                                )
             case UserState.AFTER_NAME:
-                await  common_stage_process(chat_id, context, state, "Готов")
+                await common_stage_process(chat_id, context, state, "Готов")
             case UserState.COMMON:
-                await  common_stage_process(chat_id, context, state, "Теперь хочу узнать про роли!")
+                await common_stage_process(chat_id, context, state, "Теперь хочу узнать про роли!")
             case UserState.RED:
                 await role_stage_process(chat_id, context, state, update, "Так, а комиссар тоже мирный житель? 🕵️")
             case UserState.YELLOW:
@@ -191,7 +205,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             case UserState.GRAY:
                 await role_stage_process(chat_id, context, state, update, "Так-так-так, а как понять куда стрелять?😅")
             case UserState.HOW_TO_FIRE:
-                await  common_stage_process(chat_id, context, state, "Вроде понятно. Что дальше? ☀️")
+                await common_stage_process(chat_id, context, state, "Вроде понятно. Что дальше? ☀️")
             case UserState.FIRST_DAY:
                 await common_stage_process(chat_id, context, state, "Так-так, а как голосовать? 🤔")
             case UserState.VOTING:
@@ -287,7 +301,7 @@ def main() -> Application:
 
     app = ApplicationBuilder().token("").build()
 
-    app.add_handler(MessageHandler(None, button))
+    app.add_handler(MessageHandler(None, message))
 
     return app
 
