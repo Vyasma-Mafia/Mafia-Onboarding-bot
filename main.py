@@ -138,17 +138,11 @@ media_cache = {}
 # Отправка картинок из папки
 async def send_image(update: Update, context: ContextTypes.DEFAULT_TYPE, image_path: str, text: Optional[str] = None,
                      reply_markup: Optional[ReplyKeyboardMarkup] = None) -> None:
-    if image_path in media_cache:
+    with open(os.path.join('pics', image_path), 'rb') as file:
         await context.bot.send_photo(chat_id=update.effective_chat.id,
                                      caption=text,
-                                     photo=media_cache[image_path],
+                                     photo=file,
                                      reply_markup=reply_markup)
-    else:
-        with open(os.path.join('pics', image_path), 'rb') as file:
-            update = await context.bot.send_photo(chat_id=update.effective_chat.id,
-                                         caption=text,
-                                         photo=file,
-                                         reply_markup=reply_markup)
 
 
 async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE, video_path: str, text: Optional[str] = None,
@@ -224,7 +218,7 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                text=load_stage_text(state, "1"),
                                                reply_markup=None)
                 await send_video(update, context,
-                                 video_path="night.gif",
+                                 video_path="night.gif.mp4",
                                  text=load_stage_text(state, "2"),
                                  reply_markup=keyboard_from_messages(["Это все? Уже можно играть?😝"])
                                  )
