@@ -2,10 +2,12 @@ import asyncio
 import os
 import sqlite3
 from enum import Enum
+from functools import wraps
 from typing import Optional, List
 
 import aiosqlite
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ApplicationBuilder, \
     MessageHandler
 
@@ -118,6 +120,20 @@ def load_stage_text(stage: UserState, suffix: str = "") -> str:
     return load_text(stage.value + suffix + ".txt")
 
 
+def send_action(action: ChatAction):
+    """Sends `action` while processing func command."""
+
+    def decorator(func):
+        @wraps(func)
+        async def command_func(update, context, *args, **kwargs):
+            await context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=action)
+            return await func(update, context, *args, **kwargs)
+
+        return command_func
+
+    return decorator
+
+
 # Отправка картинок из папки
 async def send_image(update: Update, context: ContextTypes.DEFAULT_TYPE, image_path: str, text: Optional[str] = None,
                      reply_markup: Optional[ReplyKeyboardMarkup] = None) -> None:
@@ -138,6 +154,7 @@ async def send_video(update: Update, context: ContextTypes.DEFAULT_TYPE, video_p
 
 
 # Обработчик нажатия на кнопки
+@send_action(ChatAction.TYPING)
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.message.from_user
     chat_id = update.message.chat.id
@@ -221,9 +238,10 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             case UserState.TEST_Q3:
                 await context.bot.send_message(chat_id=chat_id,
                                                text=load_stage_text(state),
-                                               reply_markup=keyboard_from_messages(["Стреляем в первую ночь и в 1, и в 6, и в 4",
-                                                                                    "Первой ночью стреляем в игрока 1, следующей в 6, потом в 4.",
-                                                                                    "Нужно проснуться ночью: когда назовут 1",]))
+                                               reply_markup=keyboard_from_messages(
+                                                   ["Стреляем в первую ночь и в 1, и в 6, и в 4",
+                                                    "Первой ночью стреляем в игрока 1, следующей в 6, потом в 4.",
+                                                    "Нужно проснуться ночью: когда назовут 1", ]))
             case UserState.TEST_END:
                 await common_stage_process(chat_id, context, state, "Я уже поиграл! 😎")
             case UserState.MC_START:
