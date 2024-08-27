@@ -11,6 +11,13 @@ from telegram.ext import Application, ContextTypes, ApplicationBuilder, \
     MessageHandler
 
 
+# Constants
+DB_FILE = 'users.db'
+TEXTS_DIR = 'texts'
+PICTURES_DIR = 'pics'
+API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")  # Use an environment variable for the token
+
+
 class UserState(Enum):
     START = "start"
     AFTER_START = "after_start"
@@ -303,7 +310,7 @@ def keyboard_from_messages(messages: List[str]) -> ReplyKeyboardMarkup:
 def main() -> Application:
     init_db()
 
-    app = ApplicationBuilder().token("").build()
+    app = ApplicationBuilder().token(API_TOKEN).build()
 
     app.add_handler(MessageHandler(None, message))
 
