@@ -1,6 +1,6 @@
+import logging
 import os
 import sqlite3
-from asyncio.log import logger
 from enum import Enum
 from functools import wraps
 from typing import Optional, List
@@ -11,6 +11,12 @@ from telegram.constants import ChatAction
 from telegram.ext import Application, ContextTypes, ApplicationBuilder, \
     MessageHandler
 
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    level=logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
 # Constants
 DB_FILE = 'db/users.db'
