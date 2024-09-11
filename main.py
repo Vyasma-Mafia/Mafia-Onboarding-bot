@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from asyncio.log import logger
 from enum import Enum
 from functools import wraps
 from typing import Optional, List
@@ -36,6 +37,7 @@ class UserState(Enum):
     MC2 = "mc2"
     MC3 = "mc3"
     MC_START = "mc_start"
+    MENU = "menu"
     NIGHT = "night"
     RED = "red"
     TEST_END = "test_end"
@@ -77,7 +79,27 @@ STAGES = [
     UserState.MC3,
     UserState.WHERE,
     UserState.END,
+    UserState.MENU
 ]
+
+stages_names = {
+    "Общая информация": UserState.COMMON,
+    "Мирный житель": UserState.RED,
+    "Шериф": UserState.YELLOW,
+    "Мафия": UserState.BLACK,
+    "Дон": UserState.GRAY,
+    "Договорка мафии": UserState.HOW_TO_FIRE,
+    "День": UserState.FIRST_DAY,
+    "Голосование": UserState.VOTING,
+    "Стрельба": UserState.FIRE,
+    "Ночная фаза": UserState.NIGHT,
+    "Фолы и запрещенные фразы": UserState.FAULTS,
+    "Жест вопроса": UserState.WHO,
+    "Словарь": UserState.DICT,
+    "Тест знаний": UserState.TEST_Q1,
+    "Полезные ссылки": UserState.MC1,
+    "Где играть?": UserState.WHERE,
+}
 
 
 # Инициализация базы данных
@@ -175,6 +197,9 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.message.from_user
     chat_id = update.message.chat.id
     state = await get_user_state(user.id)
+    text = update.message.text
+    logger.info(f"Message from {user} on state {state} with text {text}")
+
     if update.message.text == "/start" or state is None:
         state = UserState.START
         await add_user(user.id, user.username)
@@ -182,6 +207,18 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                        text=load_stage_text(state),
                                        reply_markup=keyboard_from_messages(["Да"]))
         await send_image(update, context, "start.jpg")
+    elif state == UserState.MENU:
+        # Handle menu selection
+        new_state = stages_names[text]
+        if new_state in UserState and new_state != UserState.MENU:
+            await update_user_state(user.id, new_state)
+            await message(update, context)
+        else:
+            await context.bot.send_message(chat_id=chat_id,
+                                           text="Invalid selection. Please choose a valid stage.",
+                                           reply_markup=keyboard_from_messages(
+                                               [k for (k, v) in stages_names.items()]))
+        return
     else:
         match state:
             case UserState.AFTER_START:
@@ -199,7 +236,7 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             case UserState.COMMON:
                 await common_stage_process(chat_id, context, state, "Теперь хочу узнать про роли!")
             case UserState.RED:
-                await role_stage_process(chat_id, context, state, update, "Так, а комиссар тоже мирный житель? 🕵️")
+                await role_stage_process(chat_id, context, state, update, "Так, а шериф тоже мирный житель? 🕵️")
             case UserState.YELLOW:
                 await role_stage_process(chat_id, context, state, update, "А теперь про мафию 😈")
             case UserState.BLACK:
@@ -220,7 +257,7 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                  reply_markup=keyboard_from_messages(["А потом что? 🤓"])
                                  )
             case UserState.FIRE:
-                await common_stage_process(chat_id, context, state, "А дон мафии и комиссар? 🕵️")
+                await common_stage_process(chat_id, context, state, "А дон мафии и шериф? 🕵️")
             case UserState.NIGHT:
                 await context.bot.send_message(chat_id=chat_id,
                                                text=load_stage_text(state, "1"),
@@ -280,18 +317,23 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             case UserState.WHERE:
                 await common_stage_process(chat_id, context, state, "😋😋😋")
             case UserState.END:
-                await common_stage_process(chat_id, context, state, "Пока-пока! 😊")
-                pass
+                await context.bot.send_message(chat_id=chat_id,
+                                               text=load_stage_text(state),
+                                               reply_markup=keyboard_from_messages(
+                                                   [k for (k, v) in stages_names.items()]))
+                await update_user_state(user.id, UserState.MENU)
+                return
 
     next_stage = STAGES[(STAGES.index(state) + 1) % len(STAGES)]
     await update_user_state(user.id, next_stage)
 
 
-async def common_stage_process(chat_id, context, state, reply_str="Так-так, а как голосовать? 🤔"):
+async def common_stage_process(chat_id, context, state, reply_str=None):
     await context.bot.send_message(chat_id=chat_id,
                                    text=load_stage_text(state),
-                                   reply_markup=keyboard_from_messages([reply_str]))
-
+                                   reply_markup=keyboard_from_messages([reply_str] if reply_str else ["Вернуться в меню"]))
+    if reply_str is None:
+        await update_user_state(chat_id, UserState.MENU)
 
 async def role_stage_process(chat_id, context, state, update, reply_str):
     await context.bot.send_message(chat_id=chat_id,
