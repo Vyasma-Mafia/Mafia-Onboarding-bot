@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
+      - ./db:/app/db
     ports:
       - "8000:8000"
     environment:

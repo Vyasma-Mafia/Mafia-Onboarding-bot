@@ -12,7 +12,7 @@ from telegram.ext import Application, ContextTypes, ApplicationBuilder, \
 
 
 # Constants
-DB_FILE = 'users.db'
+DB_FILE = 'db/users.db'
 TEXTS_DIR = 'texts'
 PICTURES_DIR = 'pics'
 API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")  # Use an environment variable for the token
@@ -82,7 +82,7 @@ STAGES = [
 
 # Инициализация базы данных
 def init_db() -> None:
-    with sqlite3.connect('users.db') as db:
+    with sqlite3.connect(DB_FILE) as db:
         db.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
@@ -95,7 +95,7 @@ def init_db() -> None:
 
 # Функция для добавления пользователя в базу данных
 async def add_user(user_id: int, username: str) -> None:
-    async with aiosqlite.connect('users.db') as db:
+    async with aiosqlite.connect(DB_FILE) as db:
         await db.execute('INSERT OR IGNORE INTO users (id, username, state) VALUES (?, ?, ?)',
                          (user_id, username, UserState.START.value))
         await db.commit()
@@ -103,14 +103,14 @@ async def add_user(user_id: int, username: str) -> None:
 
 # Функция для обновления состояния пользователя в базе данных
 async def update_user_state(user_id: int, state: UserState) -> None:
-    async with aiosqlite.connect('users.db') as db:
+    async with aiosqlite.connect(DB_FILE) as db:
         await db.execute('UPDATE users SET state = ? WHERE id = ?', (state.value, user_id))
         await db.commit()
 
 
 # Функция для получения состояния пользователя из базы данных
 async def get_user_state(user_id: int) -> Optional[UserState]:
-    async with aiosqlite.connect('users.db') as db:
+    async with aiosqlite.connect(DB_FILE) as db:
         async with db.execute('SELECT state FROM users WHERE id = ?', (user_id,)) as cursor:
             row = await cursor.fetchone()
             return UserState(row[0]) if row else None
@@ -215,7 +215,7 @@ async def message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                text=load_stage_text(state, "1"),
                                                reply_markup=None)
                 await send_video(update, context,
-                                 video_path="voting.gif",
+                                 video_path="voting.mp4",
                                  text=load_stage_text(state, "2"),
                                  reply_markup=keyboard_from_messages(["А потом что? 🤓"])
                                  )
